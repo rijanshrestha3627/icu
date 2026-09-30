@@ -98,66 +98,65 @@ export const ActivePatientsView: React.FC = () => {
           diastolic: numDia,
         },
         respirationRate: numRr,
-        symptomsSummary: vitalNotes.trim() || 'Bedside vitals logged',
+        spO2: currentPatient.spO2 || 98,
+        notes: vitalNotes ? vitalNotes.trim() : undefined,
       };
 
-      const existingVitals = Array.isArray(currentPatient.vitals) ? currentPatient.vitals : [];
-      const updatedVitals = [newEntry, ...existingVitals];
-
-      const noteToAppend = vitalNotes.trim()
-        ? `${currentPatient.clinicalNotes || ''}\n\n[VITALS LOGGED ${new Date().toLocaleTimeString()}]: HR ${numHr} bpm, BP ${numSys}/${numDia} mmHg, Temp ${numTempF}°F - ${vitalNotes.trim()}`
-        : currentPatient.clinicalNotes;
+      const existingHistory = Array.isArray(currentPatient.vitalSignsHistory)
+        ? currentPatient.vitalSignsHistory
+        : [];
 
       await updatePatient(currentPatient.id, {
         heart_rate_bpm: numHr,
         bp_systolic: numSys,
         bp_diastolic: numDia,
-        temperature_f: numTempF,
         temperature_F: numTempF,
+        temperature_f: numTempF,
         respiration_rate: numRr,
-        vitals: updatedVitals,
-        clinicalNotes: noteToAppend,
-        clinical_notes: noteToAppend,
+        vitalSigns: newEntry,
+        vitalSignsHistory: [...existingHistory, newEntry],
+        last_updated: now,
       });
 
       setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 4000);
+      setTimeout(() => setSaveSuccess(false), 3500);
     } catch (err) {
-      console.error('Failed to log bedside vitals:', err);
-      alert('Error updating patient vitals. Please check database connection.');
+      console.error('Failed to save vitals:', err);
+      alert('Could not update vitals in database. Please check Supabase connection.');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const filtered = patients.filter((p) => {
-    if (p.status === 'DISCHARGED') return false;
+  const filtered = useMemo(() => {
+    if (!search.trim()) return patients;
     const q = search.toLowerCase();
-    return (
-      p.name?.toLowerCase().includes(q) ||
-      p.id?.toLowerCase().includes(q) ||
-      (p.department || '').toLowerCase().includes(q)
+    return patients.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.id.toLowerCase().includes(q) ||
+        (p.department && p.department.toLowerCase().includes(q))
     );
-  });
+  }, [patients, search]);
 
   return (
-    <div className="space-y-6 text-white">
-      {/* Header bar */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-3xl border border-purple-500/30 bg-[#120826]/90 p-6 backdrop-blur-xl shadow-[0_0_40px_rgba(147,51,234,0.15)]">
+    <div className="space-y-6">
+      {/* Top Banner */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-purple-400">
-            <Users className="h-3.5 w-3.5" />
+          <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-400">
+            <Users className="h-4 w-4" />
             <span>Clinical Operations</span>
           </div>
           <h3 className="mt-1 text-2xl font-black tracking-tight text-white">Active Patients & Vitals Logging</h3>
-          <p className="text-xs text-purple-200/70">
+          <p className="text-xs text-slate-400">
             Manage hospital in-patients, record bedside telemetry, and sync vitals across 3D Ward and AI engines.
           </p>
         </div>
 
         <button
           onClick={openAddModal}
-          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-[0_0_20px_rgba(168,85,247,0.4)] hover:brightness-110 transition"
+          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:brightness-110 transition"
         >
           <UserPlus className="h-4 w-4" />
           <span>Register New Patient</span>
@@ -168,19 +167,19 @@ export const ActivePatientsView: React.FC = () => {
         {/* Left: Patient List Roster (5 cols) */}
         <div className="lg:col-span-5 space-y-4">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-purple-400" />
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search by patient name, PID, or department..."
-              className="w-full rounded-2xl border border-purple-500/30 bg-[#120826]/90 py-2.5 pl-10 pr-4 text-xs text-white placeholder-purple-400/40 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500/40"
+              className="w-full rounded-xl border border-slate-800 bg-slate-900/90 py-2.5 pl-10 pr-4 text-xs text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none"
             />
           </div>
 
           <div className="space-y-2.5 max-h-[640px] overflow-y-auto pr-1">
             {filtered.length === 0 ? (
-              <div className="rounded-2xl border border-purple-500/20 bg-[#100724]/60 p-8 text-center text-purple-300/70 text-xs">
+              <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-8 text-center text-slate-400 text-xs">
                 No active patients found matching your search.
               </div>
             ) : (
@@ -190,25 +189,25 @@ export const ActivePatientsView: React.FC = () => {
                   <div
                     key={patient.id}
                     onClick={() => handleSelectPatient(patient)}
-                    className={`cursor-pointer rounded-2xl border p-4 transition-all duration-200 ${
+                    className={`cursor-pointer rounded-xl border p-4 transition-all duration-200 ${
                       isSelected
-                        ? 'border-purple-400 bg-[#170a36] shadow-[0_0_20px_rgba(168,85,247,0.25)]'
-                        : 'border-purple-500/20 bg-[#100724]/80 hover:bg-[#140a2c] hover:border-purple-500/40'
+                        ? 'border-cyan-500 bg-slate-800/90 shadow-[0_0_20px_rgba(6,182,212,0.2)]'
+                        : 'border-slate-800 bg-slate-900/80 hover:bg-slate-850 hover:border-slate-700'
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div>
                         <h4 className="text-sm font-black text-white">{patient.name}</h4>
-                        <p className="text-[11px] text-purple-300">
+                        <p className="text-[11px] text-slate-400">
                           {patient.id} • {patient.age}y / {patient.gender} • {patient.department || 'ICU'}
                         </p>
                       </div>
-                      <span className="font-mono text-[10px] font-bold uppercase rounded-full px-2 py-0.5 border border-purple-500/30 bg-purple-950/60 text-purple-300">
+                      <span className="font-mono text-[10px] font-bold uppercase rounded-full px-2 py-0.5 border border-slate-700 bg-slate-950/60 text-cyan-400">
                         {patient.triageInfo?.risk || patient.triage_risk || 'Medium'} Risk
                       </span>
                     </div>
 
-                    <div className="mt-2.5 flex items-center gap-3 text-[10px] text-purple-300/80">
+                    <div className="mt-2.5 flex items-center gap-3 text-[10px] text-slate-400">
                       <span className="flex items-center gap-1">
                         <Heart className="h-3 w-3 text-rose-400" />
                         {patient.heart_rate_bpm || 80} bpm
@@ -221,8 +220,8 @@ export const ActivePatientsView: React.FC = () => {
                       <span>{patient.temperature_F || patient.temperature_f || 98.6}°F</span>
                     </div>
 
-                    <div className="mt-2 flex items-center gap-1.5 text-[10px] text-purple-300/90 font-medium">
-                      <Stethoscope className="h-3 w-3 text-cyan-400" />
+                    <div className="mt-2 flex items-center gap-1.5 text-[10px] text-slate-300 font-medium">
+                      <Stethoscope className="h-3 w-3 text-teal-400" />
                       <span>{patient.assigned_doctor_name || 'Dr. Alistair Vance (Lead ICU)'}</span>
                     </div>
                   </div>
@@ -236,12 +235,12 @@ export const ActivePatientsView: React.FC = () => {
         {currentPatient ? (
           <div className="lg:col-span-7 space-y-6">
             {/* Patient Header Card */}
-            <div className="rounded-3xl border border-purple-500/30 bg-[#120826]/90 p-5 backdrop-blur-xl">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 backdrop-blur-md">
               <div className="flex items-start justify-between">
                 <div>
-                  <span className="font-mono text-xs text-purple-400 font-bold">{currentPatient.id}</span>
+                  <span className="font-mono text-xs text-cyan-400 font-bold">{currentPatient.id}</span>
                   <h3 className="text-xl font-black text-white">{currentPatient.name}</h3>
-                  <p className="text-xs text-purple-300/80">
+                  <p className="text-xs text-slate-400">
                     Age: {currentPatient.age} • Gender: {currentPatient.gender} • Dept: {currentPatient.department}
                   </p>
                 </div>
@@ -251,15 +250,15 @@ export const ActivePatientsView: React.FC = () => {
                       dischargePatient(currentPatient.id, 'Discharged from Active Patients View.');
                     }
                   }}
-                  className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3.5 py-1.5 text-xs font-semibold text-rose-300 hover:bg-rose-500/25 transition"
+                  className="rounded-xl border border-rose-500/30 bg-rose-500/10 px-3.5 py-1.5 text-xs font-semibold text-rose-400 hover:bg-rose-500/20 transition"
                 >
                   Discharge
                 </button>
               </div>
 
-              <div className="mt-3 rounded-2xl border border-purple-500/20 bg-purple-950/40 p-3 text-xs">
-                <span className="text-[10px] font-bold uppercase text-purple-400">Chief Complaint</span>
-                <p className="mt-0.5 text-purple-100">
+              <div className="mt-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-xs">
+                <span className="text-[10px] font-bold uppercase text-cyan-400">Chief Complaint</span>
+                <p className="mt-0.5 text-slate-200">
                   {currentPatient.triageInfo?.chiefComplaint ||
                     currentPatient.symptoms?.[0] ||
                     currentPatient.clinicalNotes ||
@@ -268,12 +267,12 @@ export const ActivePatientsView: React.FC = () => {
               </div>
 
               {/* Assigned Physician Selector */}
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-purple-500/20 bg-purple-950/30 p-3">
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
                 <div className="flex items-center gap-2">
                   <Stethoscope className="h-4 w-4 text-cyan-400" />
                   <div>
                     <span className="text-xs font-bold text-white block">Assigned Physician</span>
-                    <span className="text-[10px] text-purple-300/70">Receives real-time telemetry deterioration alerts</span>
+                    <span className="text-[10px] text-slate-400">Receives real-time telemetry deterioration alerts</span>
                   </div>
                 </div>
                 <select
@@ -285,11 +284,11 @@ export const ActivePatientsView: React.FC = () => {
                       await assignDoctorToPatient(currentPatient.id, doc.id, doc.name);
                     }
                   }}
-                  className="rounded-xl border border-purple-500/30 bg-purple-950/80 px-3 py-1.5 text-xs font-bold text-white focus:border-purple-400 focus:outline-none"
+                  className="rounded-xl border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold text-white focus:border-cyan-400 focus:outline-none"
                 >
                   <option value="" disabled>Select On-Call Physician</option>
                   {doctors.map(d => (
-                    <option key={d.id} value={d.id} className="bg-[#120826] text-white">
+                    <option key={d.id} value={d.id} className="bg-slate-900 text-white">
                       {d.name} ({d.specialization}) — [{d.status === 'ON_CALL' ? '🟢 ON CALL' : d.status === 'IN_SURGERY' ? '🟡 IN SURGERY' : '⚪ OFF DUTY'}]
                     </option>
                   ))}
@@ -298,10 +297,10 @@ export const ActivePatientsView: React.FC = () => {
             </div>
 
             {/* Vitals Entry Form */}
-            <form onSubmit={handleSaveVitals} className="rounded-3xl border border-purple-500/30 bg-[#120826]/90 p-6 backdrop-blur-xl space-y-4">
-              <div className="flex items-center justify-between border-b border-purple-500/20 pb-3">
+            <form onSubmit={handleSaveVitals} className="rounded-2xl border border-slate-800 bg-slate-900/90 p-6 backdrop-blur-md space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-purple-400" />
+                  <Activity className="h-4 w-4 text-cyan-400" />
                   <h4 className="text-sm font-black text-white uppercase tracking-wider">Log Live Bedside Vitals</h4>
                 </div>
                 {saveSuccess && (
@@ -314,56 +313,56 @@ export const ActivePatientsView: React.FC = () => {
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                 <div>
-                  <label className="text-[10px] font-bold uppercase text-purple-300">Heart Rate (BPM)</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400">Heart Rate (BPM)</label>
                   <input
                     type="number"
                     required
                     value={hr}
                     onChange={(e) => setHr(Number(e.target.value))}
-                    className="mt-1 w-full rounded-xl border border-purple-500/30 bg-purple-950/60 p-2.5 text-white font-bold focus:border-purple-400 focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/60 p-2.5 text-white font-bold focus:border-cyan-400 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold uppercase text-purple-300">BP Systolic</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400">BP Systolic</label>
                   <input
                     type="number"
                     required
                     value={bpSys}
                     onChange={(e) => setBpSys(Number(e.target.value))}
-                    className="mt-1 w-full rounded-xl border border-purple-500/30 bg-purple-950/60 p-2.5 text-white font-bold focus:border-purple-400 focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/60 p-2.5 text-white font-bold focus:border-cyan-400 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold uppercase text-purple-300">BP Diastolic</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400">BP Diastolic</label>
                   <input
                     type="number"
                     required
                     value={bpDia}
                     onChange={(e) => setBpDia(Number(e.target.value))}
-                    className="mt-1 w-full rounded-xl border border-purple-500/30 bg-purple-950/60 p-2.5 text-white font-bold focus:border-purple-400 focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/60 p-2.5 text-white font-bold focus:border-cyan-400 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold uppercase text-purple-300">Temp (°F)</label>
+                  <label className="text-[10px] font-bold uppercase text-slate-400">Temp (°F)</label>
                   <input
                     type="number"
                     step="0.1"
                     required
                     value={tempF}
                     onChange={(e) => setTempF(Number(e.target.value))}
-                    className="mt-1 w-full rounded-xl border border-purple-500/30 bg-purple-950/60 p-2.5 text-white font-bold focus:border-purple-400 focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/60 p-2.5 text-white font-bold focus:border-cyan-400 focus:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[10px] font-bold uppercase text-purple-300">Clinical Observations & Vitals Note</label>
+                <label className="text-[10px] font-bold uppercase text-slate-400">Clinical Observations & Vitals Note</label>
                 <input
                   type="text"
                   value={vitalNotes}
                   onChange={(e) => setVitalNotes(e.target.value)}
                   placeholder="e.g. Patient resting quietly, sinus rhythm on telemetry, good peripheral perfusion"
-                  className="mt-1 w-full rounded-xl border border-purple-500/30 bg-purple-950/40 p-2.5 text-xs text-white placeholder-purple-400/40 focus:border-purple-400 focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/60 p-2.5 text-xs text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none"
                 />
               </div>
 
@@ -371,7 +370,7 @@ export const ActivePatientsView: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 px-5 py-2.5 text-xs font-bold text-white shadow-[0_0_20px_rgba(168,85,247,0.4)] hover:brightness-110 transition disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 px-5 py-2.5 text-xs font-bold text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:brightness-110 transition disabled:opacity-50"
                 >
                   {isSaving ? (
                     <>
@@ -389,12 +388,12 @@ export const ActivePatientsView: React.FC = () => {
             </form>
 
             {/* Vitals Telemetry Chart */}
-            <div className="rounded-3xl border border-purple-500/30 bg-[#120826]/90 p-5 backdrop-blur-xl">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5 backdrop-blur-md">
               <VitalsChart patient={currentPatient} />
             </div>
           </div>
         ) : (
-          <div className="lg:col-span-7 rounded-3xl border border-purple-500/30 bg-[#120826]/90 p-8 text-center text-purple-300">
+          <div className="lg:col-span-7 rounded-2xl border border-slate-800 bg-slate-900/90 p-8 text-center text-slate-400">
             Please select a patient from the list.
           </div>
         )}

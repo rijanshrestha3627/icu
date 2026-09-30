@@ -70,19 +70,27 @@ export const DEFAULT_DOCTORS: Doctor[] = [
   },
 ];
 
+export const normalizeSymptoms = (symptoms: any): string[] => {
+  return Array.isArray(symptoms)
+    ? symptoms
+    : typeof symptoms === 'string' && symptoms.trim()
+    ? symptoms.split(',').map((s: string) => s.trim())
+    : [];
+};
+
 export const mapPatientRow = (row: any): Patient => {
   if (!row) return {} as Patient;
 
-  const symptoms = Array.isArray(row.symptoms)
+  const symptomsList = Array.isArray(row.symptoms)
     ? row.symptoms
     : typeof row.symptoms === 'string' && row.symptoms.trim()
-    ? [row.symptoms]
+    ? row.symptoms.split(',').map((s: string) => s.trim())
     : [];
 
   const triageInfo = row.triage_info && Object.keys(row.triage_info).length > 0
     ? row.triage_info
     : {
-        chiefComplaint: symptoms[0] || row.clinical_notes || 'Clinical Admission',
+        chiefComplaint: symptomsList[0] || row.clinical_notes || 'Clinical Admission',
         risk: row.triage_risk || 'Medium',
         riskScore: row.triage_risk === 'High' ? 85 : row.triage_risk === 'Low' ? 22 : 50,
         triageDate: row.created_at || new Date().toISOString(),
@@ -137,7 +145,7 @@ export const mapPatientRow = (row: any): Patient => {
     gender: row.gender || 'Adult',
     department: row.department || 'ICU & Emergency',
     status: row.status || 'ADMITTED',
-    symptoms,
+    symptoms: symptomsList,
     clinical_notes: row.clinical_notes || '',
     clinicalNotes: row.clinical_notes || '',
     triage_info: triageInfo,
@@ -193,10 +201,10 @@ export async function addPatient(patientData: Partial<Patient>): Promise<Patient
   const tempF = patientData.temperature_f ?? patientData.temperature_F ?? 98.6;
   const tempC = Number((((tempF - 32) * 5) / 9).toFixed(1));
   const rr = patientData.respiration_rate ?? 16;
-  const symptomsArray = Array.isArray(patientData.symptoms)
+  const symptomsList = Array.isArray(patientData.symptoms)
     ? patientData.symptoms
-    : patientData.symptoms
-    ? [patientData.symptoms]
+    : typeof patientData.symptoms === 'string' && patientData.symptoms.trim()
+    ? patientData.symptoms.split(',').map((s: string) => s.trim())
     : [];
 
   const triageRisk = patientData.triage_risk || patientData.triageInfo?.risk || 'Medium';
@@ -211,7 +219,7 @@ export async function addPatient(patientData: Partial<Patient>): Promise<Patient
     heartRate: hr,
     bloodPressure: { systolic: sys, diastolic: dia },
     respirationRate: rr,
-    symptomsSummary: symptomsArray[0] || 'Initial assessment',
+    symptomsSummary: symptomsList[0] || 'Initial assessment',
   };
 
   const assignedDocId = patientData.assigned_doctor_id || patientData.assignedDoctorId || null;
@@ -223,11 +231,11 @@ export async function addPatient(patientData: Partial<Patient>): Promise<Patient
     gender: patientData.gender || 'Adult',
     department: patientData.department || 'ICU & Emergency',
     status: patientData.status || 'ADMITTED',
-    symptoms: symptomsArray,
+    symptoms: symptomsList,
     clinical_notes: patientData.clinical_notes || patientData.clinicalNotes || '',
     vitals: patientData.vitals || [initialVitalsEntry],
     triage_info: patientData.triage_info || patientData.triageInfo || {
-      chiefComplaint: symptomsArray[0] || 'Admitted to ward',
+      chiefComplaint: symptomsList[0] || 'Admitted to ward',
       risk: triageRisk,
       riskScore: triageScore,
       triageDate: new Date().toISOString(),
@@ -280,7 +288,12 @@ export async function updatePatient(id: string, updates: Partial<Patient>): Prom
   if (updates.department !== undefined) payload.department = updates.department;
   if (updates.status !== undefined) payload.status = updates.status;
   if (updates.symptoms !== undefined) {
-    payload.symptoms = Array.isArray(updates.symptoms) ? updates.symptoms : [updates.symptoms];
+    const symptomsList = Array.isArray(updates.symptoms)
+      ? updates.symptoms
+      : typeof updates.symptoms === 'string' && updates.symptoms.trim()
+      ? updates.symptoms.split(',').map((s: string) => s.trim())
+      : [];
+    payload.symptoms = symptomsList;
   }
   if (updates.clinical_notes !== undefined || updates.clinicalNotes !== undefined) {
     payload.clinical_notes = updates.clinical_notes ?? updates.clinicalNotes;
@@ -470,6 +483,12 @@ export function formatBedsFromPatients(patients: Patient[]): ICUBedData[] {
     const spO2 = riskScore > 75 ? 89 : riskScore > 50 ? 93 : 99;
     const doctorName = patient.assigned_doctor_name || patient.assignedDoctorName || 'Dr. Evelyn Reed';
 
+    const symptomsList = Array.isArray(patient.symptoms)
+      ? patient.symptoms
+      : typeof patient.symptoms === 'string' && (patient.symptoms as any).trim()
+      ? (patient.symptoms as any).split(',').map((s: string) => s.trim())
+      : [];
+
     return {
       id: `bed-${patient.id}`,
       bedCode: `ICU-BAY-0${index + 1}`,
@@ -479,6 +498,7 @@ export function formatBedsFromPatients(patients: Patient[]): ICUBedData[] {
       diagnosis:
         patient.triageInfo?.chiefComplaint ||
         patient.triage_info?.chiefComplaint ||
+        (symptomsList.length > 0 ? symptomsList.join(', ') : null) ||
         patient.clinicalNotes?.slice(0, 45) ||
         patient.clinical_notes?.slice(0, 45) ||
         'Critical ICU Telemetry Monitoring',
@@ -651,21 +671,40 @@ class PatientDatabaseStore {
   }
 
   setCache(patients: Patient[]) {
-    this.cachedPatients = [...patients];
+    this.cachedPatients = patients.map((p) => {
+      const symptomsList = Array.isArray(p.symptoms)
+        ? p.symptoms
+        : typeof p.symptoms === 'string' && (p.symptoms as any).trim()
+        ? (p.symptoms as any).split(',').map((s: string) => s.trim())
+        : [];
+      return { ...p, symptoms: symptomsList };
+    });
     this.notify();
   }
 
   addCache(patient: Patient) {
-    this.cachedPatients = [patient, ...this.cachedPatients.filter((p) => p.id !== patient.id)];
+    const symptomsList = Array.isArray(patient.symptoms)
+      ? patient.symptoms
+      : typeof patient.symptoms === 'string' && (patient.symptoms as any).trim()
+      ? (patient.symptoms as any).split(',').map((s: string) => s.trim())
+      : [];
+    const normalized = { ...patient, symptoms: symptomsList };
+    this.cachedPatients = [normalized, ...this.cachedPatients.filter((p) => p.id !== patient.id)];
     this.notify();
   }
 
   updateCache(patient: Patient) {
+    const symptomsList = Array.isArray(patient.symptoms)
+      ? patient.symptoms
+      : typeof patient.symptoms === 'string' && (patient.symptoms as any).trim()
+      ? (patient.symptoms as any).split(',').map((s: string) => s.trim())
+      : [];
+    const normalized = { ...patient, symptoms: symptomsList };
     const idx = this.cachedPatients.findIndex((p) => String(p.id) === String(patient.id));
     if (idx !== -1) {
-      this.cachedPatients[idx] = { ...this.cachedPatients[idx], ...patient };
+      this.cachedPatients[idx] = { ...this.cachedPatients[idx], ...normalized };
     } else {
-      this.cachedPatients.unshift(patient);
+      this.cachedPatients.unshift(normalized);
     }
     this.notify();
   }

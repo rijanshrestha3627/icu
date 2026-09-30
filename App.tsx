@@ -180,7 +180,7 @@ const HisSuite: React.FC<{
   };
 
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-[#080314] text-white antialiased">
+    <div className="relative min-h-screen w-full overflow-hidden bg-[#0f172a] text-white antialiased">
       <ThreeBackground />
       <div className="relative z-10 flex w-full overflow-hidden min-h-screen">
         <Sidebar activeView={activeView} setActiveView={handleViewChange} />
@@ -257,16 +257,22 @@ function App() {
       return;
     }
 
+    const symptomsList = Array.isArray(formSymptoms) 
+      ? formSymptoms 
+      : typeof formSymptoms === 'string' && formSymptoms.trim() 
+      ? formSymptoms.split(',').map((s) => s.trim()) 
+      : [];
+
     setIsGeminiEvaluating(true);
 
     try {
       let aiResult = {
         score: formSpO2 < 90 || formHR > 120 ? 85 : 40,
-        justification: `Vitals: HR ${formHR} bpm, SpO2 ${formSpO2}%, Symptoms: ${formSymptoms}`,
+        justification: `Vitals: HR ${formHR} bpm, SpO2 ${formSpO2}%, Symptoms: ${symptomsList.join(', ')}`,
       };
 
       try {
-        aiResult = await calculateTriageRisk(formSymptoms, Number(formAge), 'Adult');
+        aiResult = await calculateTriageRisk(symptomsList.join(', '), Number(formAge), 'Adult');
       } catch (err) {
         console.warn('Gemini triage evaluation fallback:', err);
       }
@@ -279,10 +285,10 @@ function App() {
         gender: 'Adult',
         department: 'ICU & Emergency',
         status: 'ADMITTED',
-        symptoms: [formSymptoms.trim()],
-        clinicalNotes: `[Admitted] Symptoms: ${formSymptoms.trim()}.\nGemini Evaluation: ${aiResult.justification}`,
+        symptoms: symptomsList,
+        clinicalNotes: `[Admitted] Symptoms: ${symptomsList.join(', ')}.\nGemini Evaluation: ${aiResult.justification}`,
         triageInfo: {
-          chiefComplaint: formSymptoms.trim(),
+          chiefComplaint: symptomsList.join(', ') || formSymptoms.trim(),
           risk: calculatedRisk,
           riskScore: aiResult.score,
           triageDate: new Date().toISOString(),
@@ -409,7 +415,7 @@ function App() {
 
   return (
     <PatientProvider>
-      <div className="relative min-h-screen w-full overflow-hidden bg-[#080314] font-sans antialiased text-white">
+      <div className="relative min-h-screen w-full overflow-hidden bg-[#0f172a] font-sans antialiased text-white">
         <ThreeBackground />
         <div className="relative z-10 min-h-screen w-full">
           {renderAppContent()}
@@ -418,21 +424,21 @@ function App() {
         {/* Global Add Patient Modal */}
         {isAddModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-            <div className="relative w-full max-w-xl overflow-hidden rounded-3xl border border-purple-500/30 bg-[#120826]/95 p-6 sm:p-8 shadow-[0_0_50px_rgba(168,85,247,0.25)] text-white">
-              <div className="flex items-center justify-between pb-4 border-b border-purple-500/20">
+            <div className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 shadow-2xl text-white">
+              <div className="flex items-center justify-between pb-4 border-b border-slate-800">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-600/30 border border-purple-500/40 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-600/20 border border-cyan-500/30 text-cyan-400">
                     <UserPlus className="h-5 w-5" />
                   </div>
                   <div>
                     <h3 className="text-xl font-black tracking-tight text-white">Register Clinical Patient</h3>
-                    <p className="text-xs text-purple-300/80">Evaluates acuity with Gemini and synchronizes database</p>
+                    <p className="text-xs text-slate-400">Evaluates acuity with Gemini and synchronizes database</p>
                   </div>
                 </div>
                 <button
                   onClick={() => !isGeminiEvaluating && setIsAddModalOpen(false)}
                   disabled={isGeminiEvaluating}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-950/60 border border-purple-500/30 text-purple-300 hover:bg-purple-800/40 transition disabled:opacity-50"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800 border border-slate-700 text-slate-400 hover:text-white transition disabled:opacity-50"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -440,9 +446,9 @@ function App() {
 
               {isGeminiEvaluating ? (
                 <div className="py-12 flex flex-col items-center justify-center text-center">
-                  <Loader2 className="h-12 w-12 text-purple-400 animate-spin" />
+                  <Loader2 className="h-12 w-12 text-cyan-400 animate-spin" />
                   <h4 className="mt-4 text-base font-bold text-white">Gemini Clinical AI Evaluating Acuity...</h4>
-                  <p className="mt-1 text-xs text-purple-300/70 max-w-sm">
+                  <p className="mt-1 text-xs text-slate-400 max-w-sm">
                     Analyzing vitals and symptoms to compute deterioration risk trajectory.
                   </p>
                 </div>
@@ -450,18 +456,18 @@ function App() {
                 <form onSubmit={handleAddPatientSubmit} className="mt-5 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="sm:col-span-2">
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-purple-300">Name</label>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">Name</label>
                       <input
                         type="text"
                         required
                         value={formName}
                         onChange={(e) => setFormName(e.target.value)}
                         placeholder="e.g. Jordan Price"
-                        className="mt-1 w-full rounded-xl border border-purple-500/30 bg-purple-950/40 px-3.5 py-2.5 text-sm text-white placeholder-purple-400/40 focus:border-purple-400 focus:outline-none"
+                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/60 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="text-[11px] font-bold uppercase tracking-wider text-purple-300">Age</label>
+                      <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">Age</label>
                       <input
                         type="number"
                         required
@@ -469,44 +475,44 @@ function App() {
                         max="120"
                         value={formAge}
                         onChange={(e) => setFormAge(Number(e.target.value))}
-                        className="mt-1 w-full rounded-xl border border-purple-500/30 bg-purple-950/40 px-3.5 py-2.5 text-sm text-white focus:border-purple-400 focus:outline-none"
+                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/60 px-3.5 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div>
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-purple-300">HR (bpm)</label>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-300">HR (bpm)</label>
                       <input
                         type="number"
                         required
                         value={formHR}
                         onChange={(e) => setFormHR(Number(e.target.value))}
-                        className="mt-1 w-full rounded-xl border border-purple-500/30 bg-purple-950/40 px-3 py-2 text-sm text-white focus:border-purple-400 focus:outline-none"
+                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-purple-300">BP Sys (mmHg)</label>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-300">BP Sys (mmHg)</label>
                       <input
                         type="number"
                         required
                         value={formBPSys}
                         onChange={(e) => setFormBPSys(Number(e.target.value))}
-                        className="mt-1 w-full rounded-xl border border-purple-500/30 bg-purple-950/40 px-3 py-2 text-sm text-white focus:border-purple-400 focus:outline-none"
+                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-purple-300">BP Dia (mmHg)</label>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-300">BP Dia (mmHg)</label>
                       <input
                         type="number"
                         required
                         value={formBPDia}
                         onChange={(e) => setFormBPDia(Number(e.target.value))}
-                        className="mt-1 w-full rounded-xl border border-purple-500/30 bg-purple-950/40 px-3 py-2 text-sm text-white focus:border-purple-400 focus:outline-none"
+                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] font-bold uppercase tracking-wider text-purple-300">SpO₂ (%)</label>
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-300">SpO₂ (%)</label>
                       <input
                         type="number"
                         required
@@ -514,34 +520,34 @@ function App() {
                         max="100"
                         value={formSpO2}
                         onChange={(e) => setFormSpO2(Number(e.target.value))}
-                        className="mt-1 w-full rounded-xl border border-purple-500/30 bg-purple-950/40 px-3 py-2 text-sm text-white focus:border-purple-400 focus:outline-none"
+                        className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/60 px-3 py-2 text-sm text-white focus:border-cyan-400 focus:outline-none"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-purple-300">Symptoms</label>
+                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">Symptoms</label>
                     <textarea
                       required
                       rows={3}
                       value={formSymptoms}
                       onChange={(e) => setFormSymptoms(e.target.value)}
                       placeholder="e.g. Diaphoresis, severe headache, palpitations"
-                      className="mt-1 w-full rounded-xl border border-purple-500/30 bg-purple-950/40 px-3.5 py-2.5 text-sm text-white placeholder-purple-400/40 focus:border-purple-400 focus:outline-none"
+                      className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/60 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none"
                     />
                   </div>
 
-                  <div className="flex items-center justify-end gap-3 pt-3 border-t border-purple-500/20">
+                  <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
                     <button
                       type="button"
                       onClick={() => setIsAddModalOpen(false)}
-                      className="rounded-xl border border-purple-500/30 px-4 py-2.5 text-xs font-semibold text-purple-300 hover:bg-purple-900/30 transition"
+                      className="rounded-xl border border-slate-700 px-4 py-2.5 text-xs font-semibold text-slate-300 hover:bg-slate-800 transition"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 px-5 py-2.5 text-xs font-bold text-white shadow-[0_0_20px_rgba(168,85,247,0.4)] hover:brightness-110 transition"
+                      className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 px-5 py-2.5 text-xs font-bold text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:brightness-110 transition"
                     >
                       <Sparkles className="h-4 w-4" />
                       <span>Evaluate with Gemini & Register</span>

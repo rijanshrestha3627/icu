@@ -181,9 +181,9 @@ export const AnalyticsView: React.FC = () => {
                         <p className="text-xs text-slate-400 mt-2">Generated 1 week ago • Quality Assured</p>
                     </div>
                     
-                    <div className="border border-slate-200 rounded-xl p-4 hover:border-purple-400 hover:shadow-sm transition-all cursor-pointer bg-slate-50/50">
+                    <div className="border border-slate-200 rounded-xl p-4 hover:border-cyan-400 hover:shadow-sm transition-all cursor-pointer bg-slate-50/50">
                         <div className="flex items-center mb-2">
-                            <div className="bg-purple-100 p-2.5 rounded-lg mr-3 text-purple-600 font-bold">
+                            <div className="bg-cyan-100 p-2.5 rounded-lg mr-3 text-cyan-600 font-bold">
                                 🛡️
                             </div>
                             <div>

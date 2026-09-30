@@ -187,7 +187,7 @@ export const DataQualityDashboardView: React.FC = () => {
                       ['HR', 'SysABP', 'DiasABP', 'MAP', 'RespRate', 'Temp'].includes(paramName)
                         ? 'bg-blue-100 text-blue-800'
                         : ['GCS', 'SaO2', 'PaO2', 'FiO2'].includes(paramName)
-                        ? 'bg-purple-100 text-purple-800'
+                        ? 'bg-cyan-100 text-cyan-800'
                         : 'bg-slate-100 text-slate-700'
                     }`}>
                       {['HR', 'SysABP', 'DiasABP', 'MAP', 'RespRate', 'Temp'].includes(paramName) ? 'Hemodynamic Vital' : 'Lab / Gas Marker'}

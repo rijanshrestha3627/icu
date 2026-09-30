@@ -35,7 +35,7 @@ export const PrescriptionHistory: React.FC<PrescriptionHistoryProps> = ({ prescr
                     {rx.patientType ? (
                       <span className={`px-2 py-1 text-xs rounded-full ${
                         rx.patientType === 'inpatient' 
-                          ? 'bg-purple-100 text-purple-800' 
+                          ? 'bg-cyan-100 text-cyan-800' 
                           : 'bg-green-100 text-green-800'
                       }`}>
                         {rx.patientType.charAt(0).toUpperCase() + rx.patientType.slice(1)}

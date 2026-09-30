@@ -219,7 +219,12 @@ export async function calculateTriageRisk(
 
   if (typeof complaintOrPatient === 'object' && complaintOrPatient !== null) {
     const p = complaintOrPatient as Patient;
-    complaint = p.triageInfo?.chiefComplaint || p.symptoms?.join(', ') || 'Acute symptoms';
+    const symptomsList = Array.isArray(p.symptoms) 
+      ? p.symptoms 
+      : typeof p.symptoms === 'string' && (p.symptoms as string).trim() 
+      ? (p.symptoms as string).split(',').map(s => s.trim()) 
+      : [];
+    complaint = p.triageInfo?.chiefComplaint || symptomsList.join(', ') || 'Acute symptoms';
     age = p.age;
     gender = p.gender;
     patientId = p.id;

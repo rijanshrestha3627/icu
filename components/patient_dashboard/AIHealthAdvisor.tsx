@@ -20,6 +20,11 @@ export const AIHealthAdvisor: React.FC<AIHealthAdvisorProps> = ({ patient }) => 
     
     try {
       let prompt = '';
+      const symptomsList = Array.isArray(patient.symptoms) 
+        ? patient.symptoms 
+        : typeof patient.symptoms === 'string' && patient.symptoms.trim() 
+        ? patient.symptoms.split(',').map(s => s.trim()) 
+        : [];
       
       switch (tab) {
         case 'overview':
@@ -42,7 +47,7 @@ export const AIHealthAdvisor: React.FC<AIHealthAdvisorProps> = ({ patient }) => 
           ${patient.surgeries?.map(s => `- ${s}`).join('\n') || 'No surgical history recorded'}
           
           Current Symptoms:
-          ${patient.symptoms?.map(s => `- ${s}`).join('\n') || 'No current symptoms recorded'}
+          ${symptomsList.map(s => `- ${s}`).join('\n') || 'No current symptoms recorded'}
           
           Triage Information:
           Chief Complaint: ${patient.triageInfo.chiefComplaint}
@@ -93,7 +98,7 @@ export const AIHealthAdvisor: React.FC<AIHealthAdvisorProps> = ({ patient }) => 
           ${patient.medicalHistory.pastConditions.map(c => `- ${c.condition} (Diagnosed: ${c.diagnosedDate})`).join('\n') || 'No past conditions recorded'}
           
           Current Symptoms:
-          ${patient.symptoms?.map(s => `- ${s}`).join('\n') || 'No current symptoms recorded'}
+          ${symptomsList.map(s => `- ${s}`).join('\n') || 'No current symptoms recorded'}
           
           Prescriptions:
           ${patient.prescriptions?.map(p => `- ${p.medication} (${p.dosage}) - ${p.instructions}`).join('\n') || 'No prescriptions recorded'}

@@ -63,6 +63,18 @@ interface PatientContextType {
 
 const PatientContext = createContext<PatientContextType | undefined>(undefined);
 
+export const normalizePatient = (p: Patient): Patient => {
+  const symptomsList = Array.isArray(p.symptoms)
+    ? p.symptoms
+    : typeof p.symptoms === 'string' && (p.symptoms as any).trim()
+    ? (p.symptoms as any).split(',').map((s: string) => s.trim())
+    : [];
+  return {
+    ...p,
+    symptoms: symptomsList,
+  };
+};
+
 export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [activePatient, setActivePatient] = useState<Patient | null>(null);
@@ -77,14 +89,15 @@ export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const refreshPatients = useCallback(async () => {
     try {
       const data = await getPatients();
+      const normalizedData = data.map(normalizePatient);
       const beds = await apiGetICUBeds();
-      setPatients(data);
+      setPatients(normalizedData);
       setIcuBeds(beds);
-      if (data.length > 0) {
+      if (normalizedData.length > 0) {
         setActivePatient((prev) => {
-          if (!prev) return data[0];
-          const matched = data.find((p) => p.id === prev.id);
-          return matched || data[0];
+          if (!prev) return normalizedData[0];
+          const matched = normalizedData.find((p) => p.id === prev.id);
+          return matched || normalizedData[0];
         });
       }
     } catch (err) {
@@ -115,11 +128,12 @@ export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ child
           apiGetDoctors()
         ]);
         if (isMounted) {
-          setPatients(patientData);
+          const normalized = patientData.map(normalizePatient);
+          setPatients(normalized);
           setIcuBeds(bedsData);
           setDoctors(docsData);
-          if (patientData.length > 0) {
-            setActivePatient((prev) => prev || patientData[0]);
+          if (normalized.length > 0) {
+            setActivePatient((prev) => prev || normalized[0]);
           }
         }
       } catch (err) {
@@ -138,14 +152,15 @@ export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ child
         async (payload) => {
           console.log('⚡ Real-time Postgres change received on patients:', payload);
           const updatedList = await getPatients();
+          const normalizedList = updatedList.map(normalizePatient);
           const updatedBeds = await apiGetICUBeds();
           if (isMounted) {
-            setPatients(updatedList);
+            setPatients(normalizedList);
             setIcuBeds(updatedBeds);
             setActivePatient((current) => {
-              if (!current) return updatedList[0] || null;
-              const match = updatedList.find((p) => p.id === current.id);
-              return match || updatedList[0] || null;
+              if (!current) return normalizedList[0] || null;
+              const match = normalizedList.find((p) => p.id === current.id);
+              return match || normalizedList[0] || null;
             });
           }
         }
@@ -166,7 +181,7 @@ export const PatientProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Also listen to internal reactive store for zero-latency local optimistics
     const unsubscribeStore = patientDatabase.subscribe((updated) => {
       if (isMounted) {
-        setPatients(updated);
+        setPatients(updated.map(normalizePatient));
         setIcuBeds(patientDatabase.getICUBeds());
         setDoctors(patientDatabase.getDoctors());
       }
@@ -467,6 +482,12 @@ const AddPatientModal: React.FC<{
     const riskScore = risk === 'High' ? 84 : risk === 'Medium' ? 52 : 18;
     setIsSaving(true);
 
+    const symptomsList = Array.isArray(complaint)
+      ? complaint
+      : typeof complaint === 'string' && complaint.trim()
+      ? complaint.split(',').map((s) => s.trim())
+      : [];
+
     try {
       await onSave({
         name: name.trim(),
@@ -491,7 +512,7 @@ const AddPatientModal: React.FC<{
         temperature_f: Number(tempF),
         temperature_F: Number(tempF),
         respiration_rate: Number(rr),
-        symptoms: [complaint],
+        symptoms: symptomsList,
         spO2: Number(spo2),
       });
 
@@ -505,21 +526,21 @@ const AddPatientModal: React.FC<{
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
-      <div className="relative w-full max-w-2xl overflow-hidden rounded-3xl border border-purple-500/30 bg-[#120826]/95 p-6 sm:p-8 shadow-[0_0_50px_rgba(168,85,247,0.25)] text-white">
-        <div className="flex items-center justify-between pb-4 border-b border-purple-500/20">
+      <div className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-6 sm:p-8 shadow-2xl text-white">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-purple-600/30 border border-purple-500/40 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-600/20 border border-cyan-500/30 text-cyan-400">
               <UserPlus className="h-5 w-5" />
             </div>
             <div>
               <h3 className="text-xl font-black tracking-tight text-white">Register Clinical Patient</h3>
-              <p className="text-xs text-purple-300/80">Saves directly to Supabase PostgreSQL & syncs real-time</p>
+              <p className="text-xs text-slate-400">Saves directly to Supabase PostgreSQL & syncs real-time</p>
             </div>
           </div>
           <button
             onClick={onClose}
             disabled={isSaving}
-            className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-950/60 border border-purple-500/30 text-purple-300 hover:bg-purple-800/40 transition disabled:opacity-50"
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-800 border border-slate-700 text-slate-400 hover:text-white transition disabled:opacity-50"
           >
             <X className="h-5 w-5" />
           </button>
@@ -527,9 +548,9 @@ const AddPatientModal: React.FC<{
 
         {isSaving ? (
           <div className="py-14 flex flex-col items-center justify-center text-center">
-            <Loader2 className="h-12 w-12 text-purple-400 animate-spin" />
+            <Loader2 className="h-12 w-12 text-cyan-400 animate-spin" />
             <h4 className="mt-4 text-base font-bold text-white">Persisting to Supabase Database...</h4>
-            <p className="mt-1 text-xs text-purple-300/70">
+            <p className="mt-1 text-xs text-slate-400">
               Broadcasting postgres_changes to 3D Ward, Triage, and Telemetry systems.
             </p>
           </div>
@@ -537,83 +558,83 @@ const AddPatientModal: React.FC<{
           <form onSubmit={handleSubmit} className="mt-5 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="sm:col-span-2">
-                <label className="text-[11px] font-bold uppercase tracking-wider text-purple-300">Patient Full Name</label>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">Patient Full Name</label>
                 <input
                   type="text"
                   required
                   value={name}
                   onChange={e => setName(e.target.value)}
                   placeholder="e.g. Jonathan Mercer"
-                  className="mt-1 w-full rounded-xl border border-purple-500/30 bg-purple-950/40 px-3.5 py-2.5 text-sm text-white placeholder-purple-400/40 focus:border-purple-400 focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/60 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none"
                 />
               </div>
               <div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-purple-300">Age</label>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">Age</label>
                 <input
                   type="number"
                   min="1"
                   max="120"
                   value={age}
                   onChange={e => setAge(Number(e.target.value))}
-                  className="mt-1 w-full rounded-xl border border-purple-500/30 bg-purple-950/40 px-3.5 py-2.5 text-sm text-white focus:border-purple-400 focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/60 px-3.5 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-purple-300">Gender</label>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">Gender</label>
                 <select
                   value={gender}
                   onChange={e => setGender(e.target.value as any)}
-                  className="mt-1 w-full rounded-xl border border-purple-500/30 bg-purple-950/60 px-3.5 py-2.5 text-sm text-white focus:border-purple-400 focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
                 >
-                  <option value="Male" className="bg-[#1a0c36] text-white">Male</option>
-                  <option value="Female" className="bg-[#1a0c36] text-white">Female</option>
-                  <option value="Other" className="bg-[#1a0c36] text-white">Other</option>
+                  <option value="Male" className="bg-slate-900 text-white">Male</option>
+                  <option value="Female" className="bg-slate-900 text-white">Female</option>
+                  <option value="Other" className="bg-slate-900 text-white">Other</option>
                 </select>
               </div>
               <div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-purple-300">Department</label>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">Department</label>
                 <select
                   value={department}
                   onChange={e => setDepartment(e.target.value)}
-                  className="mt-1 w-full rounded-xl border border-purple-500/30 bg-purple-950/60 px-3.5 py-2.5 text-sm text-white focus:border-purple-400 focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
                 >
-                  <option value="ICU & Emergency" className="bg-[#1a0c36] text-white">ICU & Emergency</option>
-                  <option value="Cardiology" className="bg-[#1a0c36] text-white">Cardiology</option>
-                  <option value="Neurology" className="bg-[#1a0c36] text-white">Neurology</option>
-                  <option value="Pulmonology" className="bg-[#1a0c36] text-white">Pulmonology</option>
-                  <option value="General Medicine" className="bg-[#1a0c36] text-white">General Medicine</option>
+                  <option value="ICU & Emergency" className="bg-slate-900 text-white">ICU & Emergency</option>
+                  <option value="Cardiology" className="bg-slate-900 text-white">Cardiology</option>
+                  <option value="Neurology" className="bg-slate-900 text-white">Neurology</option>
+                  <option value="Pulmonology" className="bg-slate-900 text-white">Pulmonology</option>
+                  <option value="General Medicine" className="bg-slate-900 text-white">General Medicine</option>
                 </select>
               </div>
               <div>
-                <label className="text-[11px] font-bold uppercase tracking-wider text-purple-300">Initial Triage Risk</label>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">Initial Triage Risk</label>
                 <select
                   value={risk}
                   onChange={e => setRisk(e.target.value as TriageRisk)}
-                  className="mt-1 w-full rounded-xl border border-purple-500/30 bg-purple-950/60 px-3.5 py-2.5 text-sm text-white focus:border-purple-400 focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
                 >
-                  <option value="High" className="bg-[#1a0c36] text-rose-300">High Risk (ICU Alert)</option>
-                  <option value="Medium" className="bg-[#1a0c36] text-amber-300">Medium Risk</option>
-                  <option value="Low" className="bg-[#1a0c36] text-emerald-300">Low Risk</option>
+                  <option value="High" className="bg-slate-900 text-rose-400">High Risk (ICU Alert)</option>
+                  <option value="Medium" className="bg-slate-900 text-amber-400">Medium Risk</option>
+                  <option value="Low" className="bg-slate-900 text-emerald-400">Low Risk</option>
                 </select>
               </div>
             </div>
 
             {/* Assigned Doctor Dropdown */}
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-purple-300 flex items-center justify-between">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300 flex items-center justify-between">
                 <span>Assign On-Call Physician</span>
-                <span className="text-[10px] font-normal text-purple-400/80">Links patient directly to doctor telemetry</span>
+                <span className="text-[10px] font-normal text-slate-400">Links patient directly to doctor telemetry</span>
               </label>
               <select
                 value={selectedDoctorId}
                 onChange={e => handleDoctorChange(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-purple-500/30 bg-purple-950/60 px-3.5 py-2.5 text-sm text-white focus:border-purple-400 focus:outline-none"
+                className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950 px-3.5 py-2.5 text-sm text-white focus:border-cyan-400 focus:outline-none"
               >
                 {doctors.map(doc => (
-                  <option key={doc.id} value={doc.id} className="bg-[#1a0c36] text-white">
+                  <option key={doc.id} value={doc.id} className="bg-slate-900 text-white">
                     {doc.name} — {doc.specialization} [{doc.status === 'ON_CALL' ? '🟢 ON CALL' : doc.status === 'IN_SURGERY' ? '🟡 IN SURGERY' : '⚪ OFF DUTY'}]
                   </option>
                 ))}
@@ -621,95 +642,95 @@ const AddPatientModal: React.FC<{
             </div>
 
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-purple-300">Chief Complaint & Clinical Presentation</label>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300">Chief Complaint & Clinical Presentation</label>
               <input
                 type="text"
                 required
                 value={complaint}
                 onChange={e => setComplaint(e.target.value)}
                 placeholder="e.g. Sudden severe retrosternal pain, diaphoresis, dyspnea"
-                className="mt-1 w-full rounded-xl border border-purple-500/30 bg-purple-950/40 px-3.5 py-2.5 text-sm text-white placeholder-purple-400/40 focus:border-purple-400 focus:outline-none"
+                className="mt-1 w-full rounded-xl border border-slate-700 bg-slate-950/60 px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:border-cyan-400 focus:outline-none"
               />
             </div>
 
             {/* Vitals Grid */}
-            <div className="rounded-2xl border border-purple-500/20 bg-purple-950/30 p-3.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-purple-300/80 flex items-center gap-1.5 mb-2">
-                <Activity className="h-3.5 w-3.5 text-purple-400" />
+            <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3.5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5 mb-2">
+                <Activity className="h-3.5 w-3.5 text-cyan-400" />
                 Admitting Vital Signs & Telemetry
               </span>
               <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 text-xs">
                 <div>
-                  <label className="text-[10px] text-purple-300">Heart Rate (BPM)</label>
+                  <label className="text-[10px] text-slate-400">Heart Rate (BPM)</label>
                   <input
                     type="number"
                     value={hr}
                     onChange={e => setHr(Number(e.target.value))}
-                    className="mt-1 w-full rounded-lg border border-purple-500/30 bg-purple-950/60 p-2 text-white text-xs"
+                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-white text-xs focus:border-cyan-400 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-purple-300">BP Systolic / Dia</label>
+                  <label className="text-[10px] text-slate-400">BP Systolic / Dia</label>
                   <div className="mt-1 flex items-center gap-1">
                     <input
                       type="number"
                       value={bpSys}
                       onChange={e => setBpSys(Number(e.target.value))}
-                      className="w-1/2 rounded-lg border border-purple-500/30 bg-purple-950/60 p-2 text-white text-xs"
+                      className="w-1/2 rounded-lg border border-slate-700 bg-slate-900 p-2 text-white text-xs focus:border-cyan-400 focus:outline-none"
                     />
-                    <span className="text-purple-400">/</span>
+                    <span className="text-slate-500">/</span>
                     <input
                       type="number"
                       value={bpDia}
                       onChange={e => setBpDia(Number(e.target.value))}
-                      className="w-1/2 rounded-lg border border-purple-500/30 bg-purple-950/60 p-2 text-white text-xs"
+                      className="w-1/2 rounded-lg border border-slate-700 bg-slate-900 p-2 text-white text-xs focus:border-cyan-400 focus:outline-none"
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="text-[10px] text-purple-300">SpO₂ (%)</label>
+                  <label className="text-[10px] text-slate-400">SpO₂ (%)</label>
                   <input
                     type="number"
                     min="50"
                     max="100"
                     value={spo2}
                     onChange={e => setSpo2(Number(e.target.value))}
-                    className="mt-1 w-full rounded-lg border border-purple-500/30 bg-purple-950/60 p-2 text-white text-xs"
+                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-white text-xs focus:border-cyan-400 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-purple-300">Temp (°F)</label>
+                  <label className="text-[10px] text-slate-400">Temp (°F)</label>
                   <input
                     type="number"
                     step="0.1"
                     value={tempF}
                     onChange={e => setTempF(Number(e.target.value))}
-                    className="mt-1 w-full rounded-lg border border-purple-500/30 bg-purple-950/60 p-2 text-white text-xs"
+                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-white text-xs focus:border-cyan-400 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] text-purple-300">Resp Rate (/min)</label>
+                  <label className="text-[10px] text-slate-400">Resp Rate (/min)</label>
                   <input
                     type="number"
                     value={rr}
                     onChange={e => setRr(Number(e.target.value))}
-                    className="mt-1 w-full rounded-lg border border-purple-500/30 bg-purple-950/60 p-2 text-white text-xs"
+                    className="mt-1 w-full rounded-lg border border-slate-700 bg-slate-900 p-2 text-white text-xs focus:border-cyan-400 focus:outline-none"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-purple-500/20">
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-xl border border-purple-500/30 px-5 py-2.5 text-xs font-semibold text-purple-300 hover:bg-purple-900/40 transition"
+                className="rounded-xl border border-slate-700 px-5 py-2.5 text-xs font-semibold text-slate-300 hover:bg-slate-800 transition"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 px-6 py-2.5 text-xs font-bold text-white shadow-[0_0_20px_rgba(168,85,247,0.4)] hover:brightness-110 transition"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 px-6 py-2.5 text-xs font-bold text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] hover:brightness-110 transition"
               >
                 <Sparkles className="h-4 w-4" />
                 Save to Supabase

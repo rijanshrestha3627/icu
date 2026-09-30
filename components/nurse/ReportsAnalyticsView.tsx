@@ -82,8 +82,8 @@ export const ReportsAnalyticsView: React.FC<ReportsAnalyticsViewProps> = ({
                 
                 <div className="bg-white rounded-xl shadow-sm p-6">
                     <div className="flex items-center">
-                        <div className="p-3 bg-purple-100 rounded-lg">
-                            <svg className="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <div className="p-3 bg-cyan-100 rounded-lg">
+                            <svg className="h-6 w-6 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </div>
@@ -144,7 +144,7 @@ export const ReportsAnalyticsView: React.FC<ReportsAnalyticsViewProps> = ({
                             <span>Transfers</span>
                             <span className="font-bold">3</span>
                         </div>
-                        <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                        <div className="flex items-center justify-between p-3 bg-cyan-50 rounded-lg">
                             <span>Readmissions</span>
                             <span className="font-bold">1</span>
                         </div>
